@@ -42,6 +42,25 @@ services:
     networks:
       - ecommerce-network
 
+  # Product Service
+  product-service:
+    build: ./product-service
+    container_name: product-service
+    ports:
+      - "8081:8081"
+    depends_on:
+      - eureka-server
+      - product-db
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - DB_HOST=product-db
+      - DB_PORT=5432
+      - DB_NAME=productdb
+      - DB_USER=product_user
+      - DB_PASSWORD=product_pass
+    networks:
+      - ecommerce-network
+
   # PostgreSQL Database for Product Service
   product-db:
     image: postgres:15-alpine

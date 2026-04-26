@@ -36,17 +36,45 @@ Sistem se sastoji od više nezavisnih mikroservisa koji komuniciraju međusobno 
 ## Servisi
 
 ### Infrastrukturni Servisi
-- **Eureka Server** - Service Discovery i registracija servisa
-- **Config Server** - Centralizovana konfiguracija
-- **API Gateway** - Routing i load balancing
+- **Eureka Server** (port 8761) - Service Discovery i registracija servisa
+- **Config Server** (port 8888) - Centralizovana konfiguracija
+- **API Gateway** (port 8080) - Routing i load balancing
 
 ### Poslovni Servisi
-- **Product Service** - Upravljanje proizvodima
-- **Order Service** - Upravljanje porudžbinama
-- **User Service** - Upravljanje korisnicima
-- **Inventory Service** - Upravljanje zalihama
-- **Payment Service** - Obrada plaćanja
-- **Notification Service** - Slanje obaveštenja
+- **Product Service** (port 8081) - ✅ Upravljanje proizvodima (CRUD operacije)
+- **Order Service** (port 8082) - 🚧 Upravljanje porudžbinama
+- **User Service** (port 8083) - 🚧 Upravljanje korisnicima
+- **Inventory Service** (port 8084) - 🚧 Upravljanje zalihama
+- **Payment Service** (port 8085) - 🚧 Obrada plaćanja
+- **Notification Service** (port 8086) - 🚧 Slanje obaveštenja
+
+## Product Service API
+
+Product Service pruža REST API za upravljanje proizvodima:
+
+### Endpoints
+- `POST /api/products` - Kreiranje novog proizvoda
+- `GET /api/products` - Lista svih proizvoda
+  - Query parametri: `?category=Electronics`, `?search=keyword`, `?activeOnly=true`
+- `GET /api/products/{id}` - Proizvod po ID-u
+- `GET /api/products/sku/{sku}` - Proizvod po SKU-u
+- `PUT /api/products/{id}` - Ažuriranje proizvoda
+- `PATCH /api/products/{id}/stock?quantity=50` - Ažuriranje zaliha
+- `DELETE /api/products/{id}` - Brisanje proizvoda
+
+### Primer Request Body
+```json
+{
+  "sku": "LAPTOP-001",
+  "name": "Gaming Laptop",
+  "description": "High-performance gaming laptop",
+  "price": 1299.99,
+  "stockQuantity": 50,
+  "category": "Electronics",
+  "imageUrl": "http://example.com/laptop.jpg",
+  "active": true
+}
+```
 
 ## Tehnologije
 
