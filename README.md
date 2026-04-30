@@ -18,19 +18,26 @@ Sistem se sastoji od više nezavisnih mikroservisa koji komuniciraju međusobno 
 
 ```
 ┌─────────────────┐
-│   API Gateway   │  ← Jedinstvena ulazna tačka
+│   API Gateway   │  ← Jedinstvena ulazna tačka (port 8080)
 └────────┬────────┘
          │
     ┌────┴─────┐
-    │  Eureka  │  ← Service Discovery
+    │  Eureka  │  ← Service Discovery (port 8761)
     └────┬─────┘
          │
-    ┌────┴────────────────────────┐
-    │                             │
-┌───▼───────┐              ┌─────▼──────┐
-│ Product   │              │  Order     │
-│ Service   │◄────────────►│  Service   │
-└───────────┘              └────────────┘
+    ┌────┴─────┐
+    │  Config  │  ← Centralizovana konfiguracija (port 8888)
+    └──────────┘
+
+┌──────────────┐     Sinhrona REST      ┌─────────────┐
+│   Product    │◄────(OpenFeign)────────┤   Order     │
+│   Service    │                        │   Service   │
+│              │   GET /api/products/   │             │
+│ (port 8081)  │      sku/{sku}         │ (port 8082) │
+│              │                        │             │
+│  PostgreSQL  │                        │  PostgreSQL │
+│  (port 5432) │                        │  (port 5433)│
+└──────────────┘                        └─────────────┘
 ```
 
 ## Servisi
@@ -42,7 +49,7 @@ Sistem se sastoji od više nezavisnih mikroservisa koji komuniciraju međusobno 
 
 ### Poslovni Servisi
 - **Product Service** (port 8081) - ✅ Upravljanje proizvodima (CRUD operacije)
-- **Order Service** (port 8082) - 🚧 Upravljanje porudžbinama
+- **Order Service** (port 8082) - ✅ Upravljanje porudžbinama (sinhrona komunikacija sa Product Service)
 - **User Service** (port 8083) - 🚧 Upravljanje korisnicima
 - **Inventory Service** (port 8084) - 🚧 Upravljanje zalihama
 - **Payment Service** (port 8085) - 🚧 Obrada plaćanja
@@ -76,6 +83,51 @@ Product Service pruža REST API za upravljanje proizvodima:
 }
 ```
 
+## Order Service API
+
+Order Service upravlja porudžbinama i komunicira sa Product Service-om putem OpenFeign klijenta.
+
+### Sinhrona Komunikacija
+Order Service koristi **Spring Cloud OpenFeign** za REST pozive prema Product Service-u:
+- Validacija dostupnosti proizvoda
+- Provera stanja zaliha
+- Preuzimanje cena i detalja proizvoda
+
+### Endpoints
+- `POST /api/orders` - Kreiranje nove porudžbine
+- `GET /api/orders` - Lista svih porudžbina
+  - Query parametri: `?customerEmail=test@test.com`, `?status=PENDING`
+- `GET /api/orders/{id}` - Porudžbina po ID-u
+- `GET /api/orders/number/{orderNumber}` - Porudžbina po broju porudžbine
+- `PATCH /api/orders/{id}/status?status=CONFIRMED` - Ažuriranje statusa
+- `DELETE /api/orders/{id}` - Otkazivanje porudžbine
+
+### Order Status Flow
+`PENDING` → `CONFIRMED` → `PROCESSING` → `SHIPPED` → `DELIVERED`
+(ili `CANCELLED` u bilo kom momentu pre DELIVERED)
+
+### Primer Request Body
+```json
+{
+  "customerEmail": "john.doe@example.com",
+  "customerName": "John Doe",
+  "shippingAddress": "123 Main St, New York, NY 10001",
+  "items": [
+    {
+      "productSku": "LAPTOP-001",
+      "quantity": 2
+    }
+  ]
+}
+```
+
+### Validacija
+- Proizvodi moraju da postoje u Product Service-u
+- Proizvodi moraju biti aktivni (active=true)
+- Dovoljno stanja zaliha za traženu količinu
+- Automatsko generisanje jedinstvenog broja porudžbine (ORD-XXXXXXXX)
+- Automatski izračunata ukupna cena
+
 ## Tehnologije
 
 - Java 17
@@ -96,6 +148,8 @@ mvn clean install
 docker-compose up -d
 ```
 
-## Status Projekta
+## Napomene
 
-🚧 **U razvoju** - Faza 1: Setup infrastrukture
+Sistem koristi **Database per Service** pattern - svaki mikroservis ima svoju nezavisnu PostgreSQL bazu podataka, što omogućava nezavisno skaliranje i deploy.
+
+Komunikacija između servisa je realizovana putem **Spring Cloud OpenFeign** klijenta koji pruža deklarativni REST klijent sa automatskim load balancing-om i service discovery integracijom.
