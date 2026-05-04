@@ -39,6 +39,16 @@ public class OrderItem {
     @Column(nullable = false)
     private BigDecimal subtotal;
 
+    public BigDecimal getSubtotal() {
+        if (subtotal != null) {
+            return subtotal;
+        }
+        if (unitPrice != null && quantity != null) {
+            return unitPrice.multiply(BigDecimal.valueOf(quantity));
+        }
+        return BigDecimal.ZERO;
+    }
+
     @PrePersist
     @PreUpdate
     private void calculateSubtotal() {
