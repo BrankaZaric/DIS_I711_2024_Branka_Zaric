@@ -8,6 +8,8 @@ Mikroservisni sistem za e-commerce razvijen korišćenjem Spring Cloud framework
 - [Arhitektura](#arhitektura)
 - [Servisi](#servisi)
 - [Tehnologije](#tehnologije)
+- [Testiranje](#testiranje)
+- [CI/CD Pipeline](#cicd-pipeline)
 - [Pokretanje Sistema](#pokretanje-sistema)
 
 ## Pregled Sistema
@@ -137,6 +139,61 @@ Order Service koristi **Spring Cloud OpenFeign** za REST pozive prema Product Se
 - Kafka/RabbitMQ
 - Docker & Docker Compose
 - Maven
+- JUnit 5 & Mockito
+- JaCoCo (Code Coverage)
+- GitHub Actions (CI/CD)
+
+## Testiranje
+
+### Pokretanje testova
+
+```bash
+# Svi testovi za ceo projekat
+mvn clean test
+
+# Testovi za specifičan servis
+cd product-service
+mvn test
+
+# Sa code coverage izveštajem
+mvn test jacoco:report
+
+# Pregled coverage izveštaja
+open target/site/jacoco/index.html
+```
+
+### Test konfiguracija
+- **Test baza**: H2 in-memory database
+- **Mocking**: Mockito za unit testove
+- **Integration testovi**: Spring Boot Test sa MockMvc
+- **Feign client testovi**: MockBean za eksterne pozive
+
+## CI/CD Pipeline
+
+Projekat koristi **GitHub Actions** za automatizovani CI/CD proces.
+
+### Pipeline Faze
+
+```
+BUILD → TEST → INTEGRATION-TEST → PACKAGE → DEPLOY
+```
+
+### Workflow Triggeri
+- **Push na `develop`**: Pokreće pipeline i deploy na Development
+- **Push na `main`**: Pokreće pipeline i deploy na Staging + Production (manual approval)
+- **Pull Request**: Pokreće BUILD + TEST faze
+
+### Deployment Okruženja
+
+| Environment | Branch | Deployment | URL |
+|-------------|--------|------------|-----|
+| Development | `develop` | Automatski | http://dev.yourapp.com |
+| Staging | `main` | Automatski | http://staging.yourapp.com |
+| Production | `main` | Manual approval | http://yourapp.com |
+
+### Detaljnije informacije
+
+Za detaljne informacije o pipeline-u, pogledaj [PIPELINE.md](PIPELINE.md).
 
 ## Pokretanje Sistema
 
