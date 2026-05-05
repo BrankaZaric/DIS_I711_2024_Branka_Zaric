@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+permissions:
+  contents: write  # Needed for creating and pushing tags
+  packages: write  # Needed for Docker images (if using GHCR)
+  actions: read
+
 env:
   JAVA_VERSION: '17'
   MAVEN_OPTS: -Xmx1024m
@@ -288,4 +293,4 @@ jobs:
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
         git tag -a v${{ github.run_number }} -m "Release v${{ github.run_number }}"
-        git push origin v${{ github.run_number }}
+        git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git v${{ github.run_number }}
