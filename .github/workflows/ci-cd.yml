@@ -60,6 +60,7 @@ jobs:
           - api-gateway
           - product-service
           - order-service
+          - user-service
 
     steps:
     - name: Checkout code
@@ -85,13 +86,13 @@ jobs:
         path: ${{ matrix.service }}/target/surefire-reports/
 
     - name: Generate test coverage report
-      if: matrix.service == 'product-service' || matrix.service == 'order-service'
+      if: matrix.service == 'product-service' || matrix.service == 'order-service' || matrix.service == 'user-service'
       run: |
         cd ${{ matrix.service }}
         mvn jacoco:report
 
     - name: Upload coverage report
-      if: matrix.service == 'product-service' || matrix.service == 'order-service'
+      if: matrix.service == 'product-service' || matrix.service == 'order-service' || matrix.service == 'user-service'
       uses: actions/upload-artifact@v4
       with:
         name: coverage-${{ matrix.service }}
@@ -134,6 +135,20 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      postgres-user:
+        image: postgres:15
+        env:
+          POSTGRES_DB: userdb
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5434:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -166,6 +181,7 @@ jobs:
           - api-gateway
           - product-service
           - order-service
+          - user-service
 
     steps:
     - name: Checkout code

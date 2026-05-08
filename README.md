@@ -52,7 +52,7 @@ Sistem se sastoji od više nezavisnih mikroservisa koji komuniciraju međusobno 
 ### Poslovni Servisi
 - **Product Service** (port 8081) - ✅ Upravljanje proizvodima (CRUD operacije)
 - **Order Service** (port 8082) - ✅ Upravljanje porudžbinama (sinhrona komunikacija sa Product Service)
-- **User Service** (port 8083) - 🚧 Upravljanje korisnicima
+- **User Service** (port 8083) - ✅ Upravljanje korisnicima (autentifikacija, JWT, role-based access)
 - **Inventory Service** (port 8084) - 🚧 Upravljanje zalihama
 - **Payment Service** (port 8085) - 🚧 Obrada plaćanja
 - **Notification Service** (port 8086) - 🚧 Slanje obaveštenja
@@ -130,11 +130,80 @@ Order Service koristi **Spring Cloud OpenFeign** za REST pozive prema Product Se
 - Automatsko generisanje jedinstvenog broja porudžbine (ORD-XXXXXXXX)
 - Automatski izračunata ukupna cena
 
+## User Service API
+
+User Service upravlja korisnicima i pruža JWT autentifikaciju sa role-based access control.
+
+### Sigurnost
+- **JWT Token** autentifikacija
+- **BCrypt** hashing lozinki
+- **Role-based access** (USER, ADMIN)
+- Session stateless (ne koristi server-side sessions)
+
+### Endpoints
+
+#### Javni (bez autentifikacije)
+- `POST /api/users/register` - Registracija novog korisnika
+- `POST /api/users/login` - Login i dobijanje JWT tokena
+
+#### Zaštićeni (zahtevaju JWT token)
+- `GET /api/users/{id}` - Detalji korisnika po ID-u (USER, ADMIN)
+- `GET /api/users/email/{email}` - Korisnik po email-u (USER, ADMIN)
+- `PUT /api/users/{id}` - Ažuriranje korisnika (USER, ADMIN)
+
+#### Admin Only
+- `GET /api/users` - Lista svih korisnika (ADMIN)
+  - Query parametri: `?activeOnly=true`
+- `PATCH /api/users/{id}/deactivate` - Deaktivacija korisnika (ADMIN)
+- `PATCH /api/users/{id}/activate` - Aktivacija korisnika (ADMIN)
+- `DELETE /api/users/{id}` - Brisanje korisnika (ADMIN)
+- `PATCH /api/users/admin/promote/{id}` - Promocija u ADMIN (ADMIN)
+
+### Primer Registration Request
+```json
+{
+  "username": "johndoe",
+  "email": "john@example.com",
+  "password": "securepass123",
+  "firstName": "John",
+  "lastName": "Doe",
+  "phoneNumber": "123-456-7890"
+}
+```
+
+### Primer Login Request/Response
+Request:
+```json
+{
+  "usernameOrEmail": "johndoe",
+  "password": "securepass123"
+}
+```
+
+Response:
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "type": "Bearer",
+  "userId": 1,
+  "username": "johndoe",
+  "email": "john@example.com",
+  "role": "USER"
+}
+```
+
+### Korišćenje JWT Tokena
+Nakon uspešnog login-a, JWT token se prosleđuje u svim zahtevima:
+```
+Authorization: Bearer <jwt-token>
+```
+
 ## Tehnologije
 
 - Java 17
 - Spring Boot 3.2.5
 - Spring Cloud 2023.0.1
+- Spring Security + JWT (JSON Web Tokens)
 - PostgreSQL
 - Kafka/RabbitMQ
 - Docker & Docker Compose
