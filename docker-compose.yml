@@ -143,6 +143,38 @@ services:
     networks:
       - ecommerce-network
 
+  # Inventory Service
+  inventory-service:
+    build: ./inventory-service
+    container_name: inventory-service
+    ports:
+      - "8084:8084"
+    depends_on:
+      - eureka-server
+      - inventory-db
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://inventory-db:5432/inventorydb
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+    networks:
+      - ecommerce-network
+
+  # PostgreSQL Database for Inventory Service
+  inventory-db:
+    image: postgres:15-alpine
+    container_name: inventory-db
+    environment:
+      POSTGRES_DB: inventorydb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5435:5432"
+    volumes:
+      - inventory-data:/var/lib/postgresql/data
+    networks:
+      - ecommerce-network
+
   # RabbitMQ - Message Broker
   rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -169,3 +201,4 @@ volumes:
   product-data:
   order-data:
   user-data:
+  inventory-data:
