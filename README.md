@@ -2,45 +2,87 @@
 
 Mikroservisni sistem za e-commerce razvijen korišćenjem Spring Cloud framework-a.
 
-## 📋 Sadržaj
-
-- [Pregled Sistema](#pregled-sistema)
-- [Arhitektura](#arhitektura)
-- [Servisi](#servisi)
-- [Tehnologije](#tehnologije)
-- [Testiranje](#testiranje)
-- [CI/CD Pipeline](#cicd-pipeline)
-- [Pokretanje Sistema](#pokretanje-sistema)
-
 ## Pregled Sistema
 
 Sistem se sastoji od više nezavisnih mikroservisa koji komuniciraju međusobno kako sinhrono (REST API) tako i asinhrono (message broker).
 
 ## Arhitektura
 
+```mermaid
+graph TB
+    Client[Client/Browser]
+    
+    subgraph "Infrastructure Services"
+        Gateway[API Gateway<br/>:8080]
+        Eureka[Eureka Server<br/>Service Discovery<br/>:8761]
+        Config[Config Server<br/>:8888]
+    end
+    
+    subgraph "Business Services"
+        Product[Product Service<br/>:8081]
+        Order[Order Service<br/>:8082]
+        User[User Service<br/>:8083]
+        Inventory[Inventory Service<br/>:8084]
+        Payment[Payment Service<br/>:8085]
+        Notification[Notification Service<br/>:8086]
+    end
+    
+    subgraph "Databases"
+        ProductDB[(PostgreSQL<br/>productdb<br/>:5432)]
+        OrderDB[(PostgreSQL<br/>orderdb<br/>:5433)]
+        UserDB[(PostgreSQL<br/>userdb<br/>:5434)]
+        InventoryDB[(PostgreSQL<br/>inventorydb<br/>:5435)]
+        PaymentDB[(PostgreSQL<br/>paymentdb<br/>:5436)]
+        NotificationDB[(PostgreSQL<br/>notificationdb<br/>:5437)]
+    end
+    
+    RabbitMQ[RabbitMQ<br/>Message Broker<br/>:5672]
+    
+    Client -->|HTTP| Gateway
+    Gateway --> Eureka
+    Gateway --> Product
+    Gateway --> Order
+    Gateway --> User
+    Gateway --> Inventory
+    Gateway --> Payment
+    Gateway --> Notification
+    
+    Product --> Eureka
+    Order --> Eureka
+    User --> Eureka
+    Inventory --> Eureka
+    Payment --> Eureka
+    Notification --> Eureka
+    
+    Order -.->|REST/OpenFeign<br/>Sync| Product
+    Order -.->|Publish Event<br/>Async| RabbitMQ
+    RabbitMQ -.->|Consume Event<br/>Async| Notification
+    
+    Product --> ProductDB
+    Order --> OrderDB
+    User --> UserDB
+    Inventory --> InventoryDB
+    Payment --> PaymentDB
+    Notification --> NotificationDB
+    
+    style Gateway fill:#e1f5ff
+    style Eureka fill:#e1f5ff
+    style Config fill:#e1f5ff
+    style Product fill:#fff4e1
+    style Order fill:#fff4e1
+    style User fill:#fff4e1
+    style Inventory fill:#fff4e1
+    style Payment fill:#fff4e1
+    style Notification fill:#fff4e1
+    style RabbitMQ fill:#ffe1e1
 ```
-┌─────────────────┐
-│   API Gateway   │  ← Jedinstvena ulazna tačka (port 8080)
-└────────┬────────┘
-         │
-    ┌────┴─────┐
-    │  Eureka  │  ← Service Discovery (port 8761)
-    └────┬─────┘
-         │
-    ┌────┴─────┐
-    │  Config  │  ← Centralizovana konfiguracija (port 8888)
-    └──────────┘
 
-┌──────────────┐     Sinhrona REST      ┌─────────────┐
-│   Product    │◄────(OpenFeign)────────┤   Order     │
-│   Service    │                        │   Service   │
-│              │   GET /api/products/   │             │
-│ (port 8081)  │      sku/{sku}         │ (port 8082) │
-│              │                        │             │
-│  PostgreSQL  │                        │  PostgreSQL │
-│  (port 5432) │                        │  (port 5433)│
-└──────────────┘                        └─────────────┘
-```
+**Legenda:**
+- 🔵 Plava - Infrastrukturni servisi
+- 🟡 Žuta - Poslovni servisi
+- 🔴 Crvena - Message broker
+- **Puna linija** → Direktna komunikacija
+- **Isprekidana linija** ⇢ REST/Async komunikacija
 
 ## Servisi
 
@@ -50,12 +92,12 @@ Sistem se sastoji od više nezavisnih mikroservisa koji komuniciraju međusobno 
 - **API Gateway** (port 8080) - Routing i load balancing
 
 ### Poslovni Servisi
-- **Product Service** (port 8081) - ✅ Upravljanje proizvodima (CRUD operacije)
-- **Order Service** (port 8082) - ✅ Upravljanje porudžbinama (sinhrona komunikacija sa Product Service)
-- **User Service** (port 8083) - ✅ Upravljanje korisnicima (autentifikacija, JWT, role-based access)
-- **Inventory Service** (port 8084) - 🚧 Upravljanje zalihama
-- **Payment Service** (port 8085) - 🚧 Obrada plaćanja
-- **Notification Service** (port 8086) - 🚧 Slanje obaveštenja
+- **Product Service** (port 8081) - Upravljanje proizvodima (CRUD operacije)
+- **Order Service** (port 8082) - Upravljanje porudžbinama sa sinhronom komunikacijom (OpenFeign)
+- **User Service** (port 8083) - Autentifikacija korisnika (JWT, role-based access)
+- **Inventory Service** (port 8084) - Upravljanje zalihama
+- **Payment Service** (port 8085) - Obrada plaćanja
+- **Notification Service** (port 8086) - Slanje obaveštenja (asinhrona komunikacija preko RabbitMQ)
 
 ## Product Service API
 
@@ -198,14 +240,39 @@ Nakon uspešnog login-a, JWT token se prosleđuje u svim zahtevima:
 Authorization: Bearer <jwt-token>
 ```
 
+## Inventory Service API
+
+- `POST /api/inventory` - Kreiranje novog Inventory zapisa
+- `GET /api/inventory/product/{productId}` - Dobijanje zaliha za proizvod
+- `PATCH /api/inventory/{id}/adjust?quantity=10` - Ažuriranje količine
+
+## Payment Service API
+
+- `POST /api/payments` - Kreiranje novog plaćanja
+- `GET /api/payments/{id}` - Detalji plaćanja
+- `GET /api/payments/order/{orderId}` - Plaćanja za porudžbinu
+
+## Notification Service API
+
+- `GET /api/notifications/user/{userId}` - Sve notifikacije za korisnika
+- RabbitMQ Consumer: prima događaje o porudžbinama i automatski kreira notifikacije
+
+## Komunikacija između servisa
+
+### Sinhrona komunikacija (REST/OpenFeign)
+- Order Service → Product Service (validacija proizvoda, provera zaliha)
+
+### Asinhrona komunikacija (RabbitMQ)
+- Order Service → Notification Service (slanje obaveštenja o novim porudžbinama)
+
 ## Tehnologije
 
 - Java 17
 - Spring Boot 3.2.5
 - Spring Cloud 2023.0.1
 - Spring Security + JWT (JSON Web Tokens)
-- PostgreSQL
-- Kafka/RabbitMQ
+- PostgreSQL (Database per service pattern)
+- RabbitMQ (Message broker)
 - Docker & Docker Compose
 - Maven
 - JUnit 5 & Mockito
