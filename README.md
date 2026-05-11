@@ -10,53 +10,33 @@ Sistem se sastoji od više nezavisnih mikroservisa koji komuniciraju međusobno 
 
 ```mermaid
 graph TB
-    Client[Client/Browser]
+    Client[👤 Client/Browser]
     
-    subgraph "Infrastructure Services"
-        Gateway[API Gateway<br/>:8080]
-        Eureka[Eureka Server<br/>Service Discovery<br/>:8761]
-        Config[Config Server<br/>:8888]
+    Client -->|HTTP Requests| Gateway
+    
+    subgraph infra[" INFRASTRUKTURA "]
+        Gateway[🌐 API Gateway<br/>:8080]
+        Eureka[📋 Service Discovery<br/>Eureka :8761]
+        Config[⚙️ Config Server<br/>:8888]
     end
     
-    subgraph "Business Services"
-        Product[Product Service<br/>:8081]
-        Order[Order Service<br/>:8082]
-        User[User Service<br/>:8083]
-        Inventory[Inventory Service<br/>:8084]
-        Payment[Payment Service<br/>:8085]
-        Notification[Notification Service<br/>:8086]
+    Gateway -->|Routes| Services
+    
+    subgraph Services[" BUSINESS SERVISI "]
+        direction LR
+        Product[📦 Product<br/>:8081]
+        Order[🛒 Order<br/>:8082]
+        User[👥 User<br/>:8083]
+        Inventory[📊 Inventory<br/>:8084]
+        Payment[💳 Payment<br/>:8085]
+        Notification[📧 Notification<br/>:8086]
     end
     
-    subgraph "Databases"
-        ProductDB[(PostgreSQL<br/>productdb<br/>:5432)]
-        OrderDB[(PostgreSQL<br/>orderdb<br/>:5433)]
-        UserDB[(PostgreSQL<br/>userdb<br/>:5434)]
-        InventoryDB[(PostgreSQL<br/>inventorydb<br/>:5435)]
-        PaymentDB[(PostgreSQL<br/>paymentdb<br/>:5436)]
-        NotificationDB[(PostgreSQL<br/>notificationdb<br/>:5437)]
-    end
+    Order -.->|OpenFeign REST| Product
+    Order -->|Publish Event| RabbitMQ
+    RabbitMQ -->|Consume Event| Notification
     
-    RabbitMQ[RabbitMQ<br/>Message Broker<br/>:5672]
-    
-    Client -->|HTTP| Gateway
-    Gateway --> Eureka
-    Gateway --> Product
-    Gateway --> Order
-    Gateway --> User
-    Gateway --> Inventory
-    Gateway --> Payment
-    Gateway --> Notification
-    
-    Product --> Eureka
-    Order --> Eureka
-    User --> Eureka
-    Inventory --> Eureka
-    Payment --> Eureka
-    Notification --> Eureka
-    
-    Order -.->|REST/OpenFeign<br/>Sync| Product
-    Order -.->|Publish Event<br/>Async| RabbitMQ
-    RabbitMQ -.->|Consume Event<br/>Async| Notification
+    RabbitMQ[🐰 RabbitMQ :5672]
     
     Product --> ProductDB
     Order --> OrderDB
@@ -65,24 +45,33 @@ graph TB
     Payment --> PaymentDB
     Notification --> NotificationDB
     
-    style Gateway fill:#e1f5ff
-    style Eureka fill:#e1f5ff
-    style Config fill:#e1f5ff
-    style Product fill:#fff4e1
-    style Order fill:#fff4e1
-    style User fill:#fff4e1
-    style Inventory fill:#fff4e1
-    style Payment fill:#fff4e1
-    style Notification fill:#fff4e1
-    style RabbitMQ fill:#ffe1e1
+    subgraph databases[" DATABASES (PostgreSQL) "]
+        direction LR
+        ProductDB[(productdb<br/>:5432)]
+        OrderDB[(orderdb<br/>:5433)]
+        UserDB[(userdb<br/>:5434)]
+        InventoryDB[(inventorydb<br/>:5435)]
+        PaymentDB[(paymentdb<br/>:5436)]
+        NotificationDB[(notificationdb<br/>:5437)]
+    end
+    
+    Services -.->|Register| Eureka
+    
+    style infra fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Services fill:#fff8e1,stroke:#f57c00,stroke-width:2px
+    style databases fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Gateway fill:#bbdefb
+    style Eureka fill:#bbdefb
+    style Config fill:#bbdefb
+    style RabbitMQ fill:#ffcdd2
+    style Client fill:#c8e6c9
 ```
 
-**Legenda:**
-- 🔵 Plava - Infrastrukturni servisi
-- 🟡 Žuta - Poslovni servisi
-- 🔴 Crvena - Message broker
-- **Puna linija** → Direktna komunikacija
-- **Isprekidana linija** ⇢ REST/Async komunikacija
+**Ključne Komunikacije:**
+- **Sinhrona**: Order Service ↔ Product Service 
+- **Asinhrona**: Order Service → RabbitMQ → Notification Service
+- **Discovery**: Svi servisi se registruju na Eureka Server
+- **Pattern**: Database per Service (svaki servis ima svoju bazu)
 
 ## Servisi
 
