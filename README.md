@@ -250,9 +250,16 @@ Authorization: Bearer <jwt-token>
 
 ### Sinhrona komunikacija (REST/OpenFeign)
 - Order Service → Product Service (validacija proizvoda, provera zaliha)
+- Implementirano kroz Spring Cloud OpenFeign klijenta
+- Automatski load balancing i service discovery
 
 ### Asinhrona komunikacija (RabbitMQ)
-- Order Service → Notification Service (slanje obaveštenja o novim porudžbinama)
+- Order Service → RabbitMQ → Notification Service
+- Event-driven messaging nakon kreiranja/ažuriranja porudžbine
+- Exchange: `order.exchange` (TopicExchange)
+- Queue: `order.notification.queue`
+- Routing Key: `order.notification`
+- Message format: JSON (OrderEventMessage)
 
 ## Tehnologije
 
@@ -322,16 +329,77 @@ Za detaljne informacije o pipeline-u, pogledaj [PIPELINE.md](PIPELINE.md).
 
 ## Pokretanje Sistema
 
+### Brzo pokretanje (Preporučeno)
 ```bash
 # Build all services
-mvn clean install
+mvn clean package -DskipTests
 
-# Start with Docker Compose
+# Start all services with Docker Compose
 docker-compose up -d
+
+# Sačekaj 30-60 sekundi da se servisi pokrenu
+# Proveri status
+docker-compose ps
 ```
+
+### Provera da li sistem radi
+- **Eureka Dashboard**: http://localhost:8761
+- **RabbitMQ Management UI**: http://localhost:15672 (guest/guest)
+- **API Gateway**: http://localhost:8080
+- **Health Checks**: `http://localhost:808X/actuator/health` (gde X je 1-6 za svaki servis)
+
+## Početni Podaci (Seed Data)
+
+Sistem automatski učitava početne podatke iz `data.sql` fajlova pri prvom pokretanju:
+
+### Proizvodi (15 proizvoda)
+### Korisnici (6 korisnika)
+#### Admin nalog:
+- **Email**: `admin@ecommerce.com`
+- **Password**: `admin123`
+- **Role**: ADMIN
+#### Obični korisnici:
+- **Email**: `john.doe@example.com` | **Password**: `password123` | **Role**: USER
+- **Email**: `jane.doe@example.com` | **Password**: `password123` | **Role**: USER
+- **Email**: `bob.smith@example.com` | **Password**: `password123` | **Role**: USER
+- **Email**: `alice.johnson@example.com` | **Password**: `password123` | **Role**: USER
+
+**Napomena**: Svi korisnici koriste BCrypt hash-ovane lozinke.
+
+## Testiranje Funkcionalnosti
+
+### Kako Testirati Sinhronu i Asinhroonu Komunikaciju
+
+Kada kreirate porudžbinu kroz Order Service API, sistem automatski:
+
+1. **Sinhrono**: Order Service → Product Service (OpenFeign)
+   - Validira da proizvod postoji
+   - Proverava zalihe
+   - Preuzima cenu i detalje
+
+2. **Asinhrono**: Order Service → RabbitMQ → Notification Service
+   - Order Service šalje poruku u RabbitMQ nakon kreiranja porudžbine
+   - Notification Service prima poruku iz queue-a
+   - Kreira notifikaciju i čuva u bazi
+
+### Verifikacija
+- **Porudžbine**: Proveri u order-db (orders tabela)
+- **Notifikacije**: Proveri u notification-db (notifications tabela)
+- **RabbitMQ Queue**: http://localhost:15672 → Queues → order.notification.queue
 
 ## Napomene
 
-Sistem koristi **Database per Service** pattern - svaki mikroservis ima svoju nezavisnu PostgreSQL bazu podataka, što omogućava nezavisno skaliranje i deploy.
+### Arhitekturni Paterni
+- **Database per Service**: Svaki mikroservis ima svoju nezavisnu PostgreSQL bazu podataka
+- **Service Discovery**: Eureka server za automatsku registraciju i discovery servisa
+- **API Gateway**: Centralizovani routing i load balancing
+- **Event-Driven Architecture**: Asinhrona komunikacija kroz RabbitMQ message broker
 
-Komunikacija između servisa je realizovana putem **Spring Cloud OpenFeign** klijenta koji pruža deklarativni REST klijent sa automatskim load balancing-om i service discovery integracijom.
+### Data Persistence
+- **Docker Volumes**: Svi podaci se čuvaju u Docker volumes i ostaju trajni posle restarta
+- **Automatic Seeding**: `data.sql` fajlovi automatski popunjavaju baze pri prvom pokretanju
+- **Hibernate DDL**: `ddl-auto: update` automatski kreira/ažurira tabele
+
+### Komunikacija
+- **Sinhrona**: Spring Cloud OpenFeign - deklarativni REST klijent sa load balancing-om
+- **Asinhrona**: Spring AMQP - event-driven messaging kroz RabbitMQ

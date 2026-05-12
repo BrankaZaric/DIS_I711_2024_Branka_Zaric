@@ -5,6 +5,7 @@ import com.ecommerce.order.dto.*;
 import com.ecommerce.order.exception.InsufficientStockException;
 import com.ecommerce.order.exception.OrderNotFoundException;
 import com.ecommerce.order.exception.ProductNotAvailableException;
+import com.ecommerce.order.messaging.OrderEventPublisher;
 import com.ecommerce.order.model.Order;
 import com.ecommerce.order.model.OrderStatus;
 import com.ecommerce.order.repository.OrderRepository;
@@ -36,6 +37,9 @@ class OrderServiceTest {
 
     @Mock
     private ProductClient productClient;
+
+    @Mock
+    private OrderEventPublisher orderEventPublisher;
 
     @InjectMocks
     private OrderService orderService;

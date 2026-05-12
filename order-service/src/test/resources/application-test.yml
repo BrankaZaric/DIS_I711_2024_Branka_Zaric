@@ -17,6 +17,10 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.H2Dialect
 
+  sql:
+    init:
+      mode: never  # Disable data.sql during tests
+
   h2:
     console:
       enabled: true
