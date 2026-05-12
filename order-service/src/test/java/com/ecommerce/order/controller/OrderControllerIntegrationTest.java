@@ -4,6 +4,7 @@ import com.ecommerce.order.client.ProductClient;
 import com.ecommerce.order.dto.OrderItemRequest;
 import com.ecommerce.order.dto.OrderRequest;
 import com.ecommerce.order.dto.ProductResponse;
+import com.ecommerce.order.messaging.OrderEventPublisher;
 import com.ecommerce.order.model.Order;
 import com.ecommerce.order.model.OrderStatus;
 import com.ecommerce.order.repository.OrderRepository;
@@ -44,6 +45,9 @@ class OrderControllerIntegrationTest {
 
     @MockBean
     private ProductClient productClient;
+
+    @MockBean
+    private OrderEventPublisher orderEventPublisher;
 
     private OrderRequest testOrderRequest;
     private ProductResponse testProduct;
