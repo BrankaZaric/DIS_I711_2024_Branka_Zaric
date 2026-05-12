@@ -86,6 +86,7 @@ services:
       - eureka-server
       - order-db
       - product-service
+      - rabbitmq
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - DB_HOST=order-db
@@ -93,6 +94,10 @@ services:
       - DB_NAME=orderdb
       - DB_USER=order_user
       - DB_PASSWORD=order_pass
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USERNAME=guest
+      - RABBITMQ_PASSWORD=guest
     networks:
       - ecommerce-network
 

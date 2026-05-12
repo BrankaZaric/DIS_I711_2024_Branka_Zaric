@@ -5,6 +5,7 @@ import com.ecommerce.order.dto.*;
 import com.ecommerce.order.exception.InsufficientStockException;
 import com.ecommerce.order.exception.OrderNotFoundException;
 import com.ecommerce.order.exception.ProductNotAvailableException;
+import com.ecommerce.order.messaging.OrderEventPublisher;
 import com.ecommerce.order.model.Order;
 import com.ecommerce.order.model.OrderItem;
 import com.ecommerce.order.model.OrderStatus;
@@ -27,6 +28,7 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final ProductClient productClient;
+    private final OrderEventPublisher orderEventPublisher;
 
     @Transactional
     public OrderResponse createOrder(OrderRequest request) {
@@ -69,6 +71,9 @@ public class OrderService {
 
         order.setTotalAmount(totalAmount);
         Order savedOrder = orderRepository.save(order);
+
+        // Publish order event to RabbitMQ for notification
+        publishOrderEvent(savedOrder);
 
         log.info("Order created successfully: {}", orderNumber);
         return mapToOrderResponse(savedOrder);
@@ -117,6 +122,9 @@ public class OrderService {
         log.info("Updating order {} status from {} to {}", order.getOrderNumber(), order.getStatus(), newStatus);
         order.setStatus(newStatus);
         Order updatedOrder = orderRepository.save(order);
+
+        // Publish order status update event
+        publishOrderEvent(updatedOrder);
 
         return mapToOrderResponse(updatedOrder);
     }
@@ -169,6 +177,18 @@ public class OrderService {
         }
 
         return orderNumber;
+    }
+
+    private void publishOrderEvent(Order order) {
+        OrderEventMessage message = OrderEventMessage.builder()
+                .orderNumber(order.getOrderNumber())
+                .customerEmail(order.getCustomerEmail())
+                .customerName(order.getCustomerName())
+                .status(order.getStatus().name())
+                .totalAmount(order.getTotalAmount().doubleValue())
+                .build();
+
+        orderEventPublisher.publishOrderEvent(message);
     }
 
     private OrderResponse mapToOrderResponse(Order order) {
